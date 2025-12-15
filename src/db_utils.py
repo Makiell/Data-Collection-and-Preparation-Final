@@ -1,59 +1,49 @@
 import sqlite3
-from pathlib import Path
 
-class DatabaseManager:
-    def __init__(self, db_path="/opt/airflow/data/app.db"):
-        self.db_path = Path(db_path)
 
-    def get_connection(self):
-        return sqlite3.connect(self.db_path)
+def get_db_connection(db_path='data/app.db'):
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    def create_events_table(self):
-        conn = self.get_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS events (
-                uri TEXT PRIMARY KEY,
-                title TEXT,
-                url TEXT,
-                source TEXT,
-                published_at TEXT,
-                language TEXT
-            )
-        """)
-        conn.commit()
-        conn.close()
 
-    def insert_events(self, events: list) -> int:
-        """
-        Вставка списка событий. Используется INSERT OR IGNORE для предотвращения дубликатов по uri.
-        """
-        conn = self.get_connection()
-        cur = conn.cursor()
-        inserted = 0
-        for e in events:
-            cur.execute("""
-                INSERT OR IGNORE INTO events
-                (uri, title, url, source, published_at, language)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (
-                str(e["uri"]), 
-                e["title"],
-                e["url"],
-                e["source"],
-                e["published_at"],
-                e["language"]
-            ))
-            if cur.rowcount > 0:
-                inserted += 1
-        conn.commit()
-        conn.close()
-        return inserted
-
-    def get_event_count(self) -> int:
-        conn = self.get_connection()
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM events")
-        count = cur.fetchone()[0]
-        conn.close()
-        return count
+def create_tables(db_path='data/app.db'):
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_uri TEXT,
+            lang TEXT,
+            datetime TEXT,
+            data_type TEXT,
+            url TEXT,
+            title TEXT,
+            body TEXT,
+            source_uri TEXT,
+            image_url TEXT,
+            sentiment REAL,
+            wgt INTEGER,
+            relevance INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS daily_summary (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            summary_date TEXT UNIQUE,
+            total_articles INTEGER,
+            avg_sentiment REAL,
+            min_sentiment REAL,
+            max_sentiment REAL,
+            top_source TEXT,
+            language_distribution TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("Database tables created or verified.")

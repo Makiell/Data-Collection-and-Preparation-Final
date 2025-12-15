@@ -79,3 +79,64 @@ Each message sent to Kafka contains:
   }
 }
 ```
+
+---
+
+## DAG 2: Hourly Data Cleaning and Storage
+
+**File**: `airflow/dags/job2_clean_store_dag.py`
+
+### What It Does
+
+1. **Consumes messages** from Kafka topic `raw_events`
+2. **Cleans data** using Pandas operations
+3. **Stores cleaned data** in SQLite database (`data/app.db`)
+4. **Runs hourly** on schedule
+
+### Schedule
+
+- **Cron**: `@hourly` (every hour at minute 0)
+
+### Data Cleaning Process
+
+All data cleaning is performed using **Pandas operations** (no vanilla Python loops):
+
+1. **Extract nested fields**: Uses `df.apply()` to extract source information from nested JSON
+2. **Rename columns**: Maps API fields to database schema
+3. **Remove nulls**: Drops rows with missing `article_uri` using `df.dropna()`
+4. **Remove duplicates**: Deduplicates based on `article_uri` using `df.drop_duplicates()`
+5. **Fill missing values**: Uses `df.fillna()` with appropriate defaults
+6. **Clean text fields**: Uses `str.strip()`, `str.split()`, `str.join()` for whitespace cleanup
+7. **Type conversions**: Converts sentiment/wgt/relevance to numeric using `pd.to_numeric()`
+8. **Normalize sentiment**: Clips values to [-1.0, 1.0] range using `df.clip()`
+
+### Database Schema
+
+**Table**: `events`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| article_uri | TEXT | Unique article identifier (primary key) |
+| lang | TEXT | Article language code |
+| datetime | TEXT | Publication datetime |
+| data_type | TEXT | Type of data (e.g., "news") |
+| url | TEXT | Article URL |
+| title | TEXT | Article title |
+| body | TEXT | Article body content |
+| source_uri | TEXT | Source identifier |
+| image_url | TEXT | Article image URL |
+| sentiment | REAL | Sentiment score [-1.0, 1.0] |
+| wgt | REAL | Article weight/importance |
+| relevance | REAL | Relevance score |
+| created_at | TIMESTAMP | Record insertion timestamp |
+
+### How to Run
+
+1. **Automatic**: DAG runs every hour automatically when enabled
+2. **Manual**: In Airflow UI, find `job2_hourly_cleaning` and click "Trigger DAG"
+
+### Consumer Configuration
+
+- **Consumer Group**: `job2_hourly_cleaning`
+- **Auto Offset Reset**: `earliest` (processes all unread messages)
+- **Kafka Broker**: `kafka:29092` (internal Docker network)
