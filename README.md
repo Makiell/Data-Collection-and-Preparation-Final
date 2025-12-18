@@ -140,3 +140,119 @@ All data cleaning is performed using **Pandas operations** (no vanilla Python lo
 - **Consumer Group**: `job2_hourly_cleaning`
 - **Auto Offset Reset**: `earliest` (processes all unread messages)
 - **Kafka Broker**: `kafka:29092` (internal Docker network)
+
+---
+
+## DAG 3: Daily Analytics and Summary
+
+**File**: `airflow/dags/job3_daily_summary_dag.py`
+
+### What It Does
+
+1. **Reads cleaned data** from SQLite `events` table
+2. **Computes aggregated metrics** grouped by date
+3. **Writes summary** to `daily_summary` table
+4. **Runs daily** on schedule
+
+### Schedule
+
+- **Cron**: `@daily` (every day at midnight)
+
+### Analytics Computed
+
+For each unique date in the dataset, the following metrics are calculated:
+
+1. **Total Articles**: Count of articles published on that date
+2. **Sentiment Statistics**:
+   - Average sentiment across all articles
+   - Minimum sentiment value
+   - Maximum sentiment value
+3. **Top Source**: Source with the most articles published
+4. **Language Distribution**: JSON object with article counts per language
+
+### Database Schema
+
+**Table**: `daily_summary`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | INTEGER | Auto-increment primary key |
+| summary_date | TEXT | Date of the summary (YYYY-MM-DD) - UNIQUE |
+| total_articles | INTEGER | Total number of articles |
+| avg_sentiment | REAL | Average sentiment score |
+| min_sentiment | REAL | Minimum sentiment score |
+| max_sentiment | REAL | Maximum sentiment score |
+| top_source | TEXT | Source URI with most articles |
+| language_distribution | TEXT | JSON string of language counts |
+| created_at | TIMESTAMP | When summary was created/updated |
+
+### Example Summary Record
+
+```json
+{
+  "summary_date": "2025-12-18",
+  "total_articles": 125,
+  "avg_sentiment": 0.234,
+  "min_sentiment": -0.876,
+  "max_sentiment": 0.956,
+  "top_source": "bbc.co.uk",
+  "language_distribution": "{\"eng\": 85, \"spa\": 25, \"fra\": 15}"
+}
+```
+
+### How to Run
+
+1. **Automatic**: DAG runs every day at midnight when enabled
+2. **Manual**: In Airflow UI, find `job3_daily_summary` and click "Trigger DAG"
+
+---
+
+## Data Visualizations
+
+**File**: `src/visualizations.py`
+
+### Generate Plots
+
+After running DAG 3 and collecting analytics data we create vizuals
+
+```bash
+python3 src/visualizations.py
+```
+
+1. **sentiment_trends.png** - Sentiment trends over time with min-max range
+2. **daily_volume.png** - Daily article collection volume
+3. **language_distribution.png** - Language distribution (bar + pie charts)
+4. **language_heatmap.png** - Language distribution across dates
+5. **sentiment_distribution.png** - Histogram of sentiment scores
+6. **top_sources.png** - Top 10 news sources by article count
+
+## Project Structure
+
+```
+project/
+├── README.md
+├── requirements.txt
+├── docker-compose.yml
+├── Dockerfile
+├── src/
+│   ├── __init__.py
+│   ├── job1_producer.py
+│   ├── job2_cleaner.py
+│   ├── job3_analytics.py
+│   ├── visualizations.py
+│   └── db_utils.py
+├── airflow/
+│   └── dags/
+│       ├── job1_ingestion_dag.py
+│       ├── job2_clean_store_dag.py
+│       └── job3_daily_summary_dag.py
+├── data/
+│   └── app.db
+└── plots/
+    ├── sentiment_trends.png
+    ├── daily_volume.png
+    ├── language_distribution.png
+    ├── language_heatmap.png
+    ├── sentiment_distribution.png
+    └── top_sources.png
+```
