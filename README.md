@@ -44,7 +44,7 @@ docker compose down
 
 ### What It Does
 
-1. **Fetches data** from EventRegistry API every 30 seconds
+1. **Fetches data** from EventRegistry API every 60 seconds
 2. **Sends messages** to Kafka topic `raw_events`
 3. **Runs continuously** for 1 hour per execution
 
