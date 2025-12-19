@@ -30,6 +30,7 @@ with DAG(
     default_args=default_args,
     description='Hourly batch job: read Kafka, clean data, write to SQLite',
     schedule_interval='@hourly',
+    catchup=False,
 ) as dag:
     
     cleaning_task = PythonOperator(

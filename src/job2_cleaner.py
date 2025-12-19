@@ -51,29 +51,22 @@ def consume_and_clean_from_kafka(kafka_bootstrap_servers='localhost:29092', topi
         print(f"Saving {len(df_cleaned)} cleaned articles to database...")
         df_cleaned.to_sql('events', conn, if_exists='append', index=False)
 
-        print(f"Finished! Total messages: {message_count}, Total cleaned articles: {len(df_cleaned)}")
-
-        print("="*70)
-        print("SAMPLE OF DATA SAVED TO DATABASE (first 3 records):")
-        print("="*70)
+        print("sample of data from database:")
         cursor = conn.cursor()
         cursor.execute("SELECT article_uri, title, lang, sentiment, datetime FROM events ORDER BY created_at DESC LIMIT 3")
         rows = cursor.fetchall()
         for i, row in enumerate(rows, 1):
             print(f"[{i}] Article URI: {row[0]}")
-            print(f"    Title: {row[1][:80]}..." if len(row[1]) > 80 else f"    Title: {row[1]}")
-            print(f"    Language: {row[2]}")
-            print(f"    Sentiment: {row[3]:.3f}")
-            print(f"    DateTime: {row[4]}")
+            print(f"Title: {row[1][:80]}..." if len(row[1]) > 80 else f"Title: {row[1]}")
+            print(f"Language: {row[2]}")
+            print(f"Sentiment: {row[3]}")
+            print(f"DateTime: {row[4]}")
         
 
         cursor.execute("SELECT COUNT(*) FROM events")
         total_in_db = cursor.fetchone()[0]
-        
-        print("="*70)
-        print("DATABASE STATISTICS:")
+
         print(f"Total articles in database: {total_in_db}")
-        print("="*70)
         
         return len(df_cleaned)
         
@@ -139,7 +132,6 @@ def clean_with_pandas(df: pd.DataFrame) -> pd.DataFrame:
     df['relevance'] = pd.to_numeric(df['relevance'], errors='coerce').fillna(0).astype(int)
     
     final_count = len(df)
-    print("=== Cleaning completed ===")
     print(f"Final articles count: {final_count}")
     
     print(f"Cleaned {len(df)} articles using Pandas")
